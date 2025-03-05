@@ -2,37 +2,35 @@ from faker import Faker
 import requests
 import time
 
-def create_mailtm_account():
+def create_email():
     base_url = "https://api.mail.tm"
-    # Get an available domain
     response = requests.get(f"{base_url}/domains")
     response.raise_for_status()
     domains = response.json()["hydra:member"]
     domain = domains[0]["domain"]
-    
+
     fake = Faker()
     email = fake.user_name() + "@" + domain
     password = fake.password(length=10)
-    
-    # Create a new account
+
     payload = {"address": email, "password": password}
     response = requests.post(f"{base_url}/accounts", json=payload)
     if response.status_code != 201:
         print("Error creating account:", response.json())
         raise Exception("Could not create mail.tm account")
-    
-    # Log in to retrieve a token
+
+ 
     payload = {"address": email, "password": password}
     response = requests.post(f"{base_url}/token", json=payload)
     response.raise_for_status()
     token = response.json()["token"]
-    
+
     return email, token
 
-def get_newest_email(token: str) -> dict:
+def get_email(token: str) -> dict:
     base_url = "https://api.mail.tm"
     headers = {"Authorization": f"Bearer {token}"}
-    time.sleep(60)  # Wait for 60 seconds before fetching emails
+    time.sleep(30) 
     while True:
         response = requests.get(f"{base_url}/messages", headers=headers)
         response.raise_for_status()
@@ -46,10 +44,10 @@ def get_newest_email(token: str) -> dict:
 
 def main():
     fake = Faker()
-    # Create a temporary mail.tm account and retrieve the access token
-    email, token = create_mailtm_account()
+    email, token = create_email()
     print(f"Temporary email: {email}")
     print("Requesting free trial key")
+    print("Wait 30 seconds...")
 
     values = {
         "first_name": fake.first_name(),
@@ -58,7 +56,6 @@ def main():
         "institution": fake.company()
     }
 
-    # Submit the free trial request using the temporary email
     requests.get(
         "https://www.maplesoft.com/contact/webforms/formprocessing/Process.aspx",
         params={
@@ -80,10 +77,8 @@ def main():
         allow_redirects=True
     )
 
-    # Wait for the email to arrive and then fetch it
-    msg = get_newest_email(token)
-    
-    # Try to extract the free trial URL from the email content
+    msg = get_email(token)
+
     body = msg.get("text") or msg.get("html")
     if body:
         print("Got free trial URL!")
@@ -93,14 +88,21 @@ def main():
             end = body.find('"', pos)
             activation_url = body[pos:end] if end != -1 else body[pos:]
             print(f"To activate your key, go to {activation_url}")
+
         else:
             print("Activation URL not found in the email.")
+            input("Press Enter to exit...") 
     else:
         print("Email body is empty or not found.")
-    
+        input("Press Enter to exit...") 
+
     print("Inputted values are as follows:")
     for key, value in values.items():
         print(f"{key}: {value}")
 
+
 if __name__ == "__main__":
     main()
+    input("Press Enter to exit...") 
+
+ 
